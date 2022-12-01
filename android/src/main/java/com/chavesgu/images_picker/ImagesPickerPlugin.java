@@ -173,11 +173,11 @@ public class ImagesPickerPlugin implements FlutterPlugin, MethodCallHandler, Act
         break;
       case "pick": {
         PICK_METHOD_CALL = call;
-        // if(hasPermission()){
+        if(hasPermission()){
           pick(call);
-        // } else {
-        //   requestPermissionsStorage(PICK_CODE);
-        // }
+        } else {
+          requestPermissionsStorage(PICK_CODE);
+        }
         break;
       }
       case "openCamera": {
