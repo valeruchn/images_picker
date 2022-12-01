@@ -74,6 +74,9 @@ public class ImagesPickerPlugin implements FlutterPlugin, MethodCallHandler, Act
   private Context context;
   private int WRITE_IMAGE_CODE = 33;
   private int WRITE_VIDEO_CODE = 44;
+  private int PICK_CODE = 55;
+  private int OPEN_CAMERA_CODE = 77;
+  private MethodCall PICK_METHOD_CALL;
   private String WRITE_IMAGE_PATH;
   private String WRITE_VIDEO_PATH;
   private String ALBUM_NAME;
@@ -120,16 +123,18 @@ public class ImagesPickerPlugin implements FlutterPlugin, MethodCallHandler, Act
 
   }
 
+  private void requestPermissionsStorage(int permissionCode){
+    if(Build.VERSION.SDK_INT > 32){
+      String[] permissions = new String[3];
+      permissions[0] = Manifest.permission.READ_MEDIA_IMAGES;
+      permissions[1] = Manifest.permission.READ_MEDIA_VIDEO;
+      permissions[3] = Manifest.permission.READ_MEDIA_AUDIO;
+      ActivityCompat.requestPermissions(activity, permissions, permissionCode);
+    }
+  }
 
-  @Override
-  public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
-    _result = result;
-    switch (call.method) {
-      case "getPlatformVersion":
-        result.success("Android " + android.os.Build.VERSION.RELEASE);
-        break;
-      case "pick": {
-        int count = (int) call.argument("count");
+  private void pick(MethodCall call){
+    int count = (int) call.argument("count");
         String pickType = call.argument("pickType");
         double quality = call.argument("quality");
         boolean supportGif = call.argument("gif");
@@ -157,6 +162,22 @@ public class ImagesPickerPlugin implements FlutterPlugin, MethodCallHandler, Act
         model.isGif(supportGif);
         model.videoMaxSecond(maxTime);
         resolveMedias(model);
+  }
+
+  @Override
+  public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
+    _result = result;
+    switch (call.method) {
+      case "getPlatformVersion":
+        result.success("Android " + android.os.Build.VERSION.RELEASE);
+        break;
+      case "pick": {
+        PICK_METHOD_CALL = call;
+        // if(hasPermission()){
+          pick(call);
+        // } else {
+        //   requestPermissionsStorage(PICK_CODE);
+        // }
         break;
       }
       case "openCamera": {
@@ -359,6 +380,9 @@ public class ImagesPickerPlugin implements FlutterPlugin, MethodCallHandler, Act
   }
 
   private boolean hasPermission() {
+    if(Build.VERSION.SDK_INT > 32){
+      return (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_IMAGES) == PERMISSION_GRANTED && ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_VIDEO) == PERMISSION_GRANTED && ContextCompat.checkSelfPermission(context, Manifest.permission.READ_MEDIA_AUDIO) == PERMISSION_GRANTED);
+    }
     return Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
             (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PERMISSION_GRANTED && ContextCompat.checkSelfPermission(context, Manifest.permission.READ_EXTERNAL_STORAGE) == PERMISSION_GRANTED);
   }
@@ -373,6 +397,10 @@ public class ImagesPickerPlugin implements FlutterPlugin, MethodCallHandler, Act
           saveVideoToGallery(WRITE_VIDEO_PATH, ALBUM_NAME);
           return true;
       }
+      if (requestCode == PICK_CODE && grantResults[0] == PERMISSION_GRANTED && grantResults[1] == PERMISSION_GRANTED && grantResults[2] == PERMISSION_GRANTED) {
+        pick(PICK_METHOD_CALL);
+        return true;
+    }
       return false;
     }
 }
